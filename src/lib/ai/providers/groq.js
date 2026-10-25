@@ -1,0 +1,161 @@
+import Groq from "groq-sdk";
+
+export function getGroqApiKeys() {
+  // Dynamically scan process.env for any variable starting with GROQ_API_KEY
+  const dynamicEnvKeys = typeof process !== 'undefined' && process.env
+    ? Object.keys(process.env)
+        .filter(key => /^GROQ_API_KEY/i.test(key))
+        .map(key => process.env[key])
+    : [];
+
+  const envVars = [
+    ...dynamicEnvKeys,
+    process.env.GROQ_API_KEY,
+    process.env.GROQ_API_KEY2,
+    process.env.GROQ_API_KEY_2,
+    process.env.GROQ_API_KEY3,
+    process.env.GROQ_API_KEY_3,
+    process.env.GROQ_API_KEY4,
+    process.env.GROQ_API_KEY_4,
+    process.env.GROQ_API_KEY5,
+    process.env.GROQ_API_KEY_5,
+    process.env.GROQ_API_KEY6,
+    process.env.GROQ_API_KEY_6,
+    process.env.GROQ_API_KEY_ALT,
+    process.env.GROQ_API_KEYS
+  ];
+
+  const keys = envVars
+    .filter(Boolean)
+    .flatMap(val => val.split(','))
+    .map(k => k.trim())
+    .filter(Boolean);
+
+  const uniqueKeys = Array.from(new Set(keys));
+  return uniqueKeys.length > 0 ? uniqueKeys : ["dummy-key-for-build"];
+}
+
+function getApiKeys() {
+  return getGroqApiKeys();
+}
+
+let activeKeyIndex = 0;
+const groqClientsMap = new Map();
+const groqCooldowns = new Map(); // key -> cooldownExpiryTimestamp
+
+function getGroqClientForKey(apiKey) {
+  if (!groqClientsMap.has(apiKey)) {
+    groqClientsMap.set(apiKey, new Groq({ apiKey }));
+  }
+  return groqClientsMap.get(apiKey);
+}
+
+function getNextGroqKey(keys) {
+  const now = Date.now();
+  for (let i = 0; i < keys.length; i++) {
+    const idx = (activeKeyIndex + i) % keys.length;
+    const candidate = keys[idx];
+    const expiry = groqCooldowns.get(candidate) || 0;
+    if (now > expiry) {
+      activeKeyIndex = (idx + 1) % keys.length;
+      return { key: candidate, index: idx };
+    }
+  }
+  const fallbackIdx = activeKeyIndex % keys.length;
+  activeKeyIndex = (fallbackIdx + 1) % keys.length;
+  return { key: keys[fallbackIdx], index: fallbackIdx };
+}
+
+/**
+ * Direct Groq AI Provider (with instant multi-key rotation on rate limit)
+ */
+export const generateGroqResponse = async (messages, systemInstruction, modelOverride = null, tools = null) => {
+  const keys = getApiKeys();
+  let attempts = 0;
+  const maxAttempts = keys.length;
+  let lastError = null;
+
+  const groqMessages = [
+    { role: "system", content: systemInstruction },
+    ...(Array.isArray(messages) ? messages.map(m => ({
+      role: m.role === 'model' || m.role === 'assistant' ? 'assistant' : 'user',
+      content: m.content || (m.parts && m.parts[0] ? m.parts[0].text : '')
+    })) : [])
+  ];
+
+  const modelName = modelOverride || process.env.GROQ_MODEL || "openai/gpt-oss-120b";
+  const body = {
+    messages: groqMessages,
+    model: modelName,
+    temperature: 0.7,
+  };
+
+  if (Array.isArray(tools) && tools.length > 0) {
+    body.tools = tools.map(t => ({
+      type: "function",
+      function: {
+        name: t.name,
+        description: t.description,
+        parameters: {
+          type: "object",
+          properties: Object.fromEntries(
+            (t.parameters || []).map(p => [
+              p.name,
+              {
+                type: p.required ? (p.type || "string") : [p.type || "string", "null"],
+                description: p.description
+              }
+            ])
+          ),
+          required: (t.parameters || []).filter(p => p.required).map(p => p.name)
+        }
+      }
+    }));
+    body.tool_choice = "auto";
+  }
+
+  while (attempts < maxAttempts) {
+    const { key: currentKey, index: keyIdx } = getNextGroqKey(keys);
+    const groq = getGroqClientForKey(currentKey);
+
+    try {
+      const completion = await groq.chat.completions.create(body, { timeout: 15000 });
+      const choice = completion.choices[0]?.message;
+
+      return {
+        text: choice?.content || "",
+        tool_calls: choice?.tool_calls || null,
+        provider: "groq",
+        model: completion.model || modelName,
+        keyIndex: keyIdx,
+        promptTokens: completion.usage?.prompt_tokens || 0,
+        completionTokens: completion.usage?.completion_tokens || 0,
+        tokensUsed: completion.usage?.total_tokens || 0
+      };
+    } catch (err) {
+      lastError = err;
+      const isRateLimitOrTimeout = 
+        err?.status === 429 || 
+        err?.status === 401 || 
+        err?.name === 'APIConnectionTimeoutError' ||
+        err?.message?.includes('timeout') ||
+        err?.message?.includes('Rate limit') || 
+        err?.message?.includes('rate_limit') ||
+        err?.message?.includes('tokens per day') ||
+        err?.message?.includes('TPM');
+
+      if (isRateLimitOrTimeout) {
+        groqCooldowns.set(currentKey, Date.now() + 60000);
+      }
+      attempts++;
+
+      if (isRateLimitOrTimeout && keys.length > 1) {
+        console.warn(`🔄 [GROQ-ROTATOR] API Key #${keyIdx + 1} issue (${err.message || err.status}). Rotating to next available key...`);
+      } else {
+        throw err;
+      }
+    }
+  }
+
+  throw lastError || new Error("All Groq API keys exhausted or rate limited.");
+};
