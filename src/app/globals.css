@@ -1,0 +1,236 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* ─── Keyframe Animations ─────────────────────────────────────────────── */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes equalizer {
+  0%, 100% { transform: scaleY(0.4); }
+  50% { transform: scaleY(1); }
+}
+
+@keyframes voxyPulse {
+  0%, 100% {
+    transform: scale(0.75);
+    opacity: 0.3;
+  }
+  50% {
+    transform: scale(1.15);
+    opacity: 1;
+  }
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes spinSlow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+
+/* ─── Design Tokens ───────────────────────────────────────────────────── */
+@theme inline {
+  /* Brand */
+  --color-voxy-primary: var(--voxy-primary);
+  --color-voxy-primary-dim: var(--voxy-primary-dim);
+  --color-voxy-text: var(--voxy-text);
+  --color-voxy-muted: var(--voxy-muted);
+  --color-voxy-subtle: var(--voxy-subtle);
+  --color-voxy-surface: var(--voxy-surface);
+  --color-voxy-border: var(--voxy-border);
+
+  /* Typography */
+  --font-sans: var(--font-onest), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, monospace;
+
+  /* Shadcn tokens */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  /* Animation utilities */
+  --animate-fade-in: fade-in 0.6s ease-out forwards;
+  --animate-fade-in-up: fade-in-up 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* ─── Base ────────────────────────────────────────────────────────────── */
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    color-scheme: dark;
+  }
+
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-[#000000] text-white font-sans antialiased;
+    font-feature-settings: "ss01", "ss02", "cv01", "cv02";
+  }
+
+  ::selection {
+    @apply bg-[#00D18F]/25 text-[#00D18F];
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-sans tracking-tight text-white;
+  }
+
+  /* Custom Smooth Scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 9999px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #00D18F;
+  }
+
+  /* ── Browser autofill override ─────────────────────────────────────────
+     Browsers apply a yellow, blue, or navy tint on autofilled inputs.
+     Force pure black background #000000 with crisp white text.
+  ── */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  input:-webkit-autofill:active,
+  input:autofill,
+  input:autofill:hover,
+  input:autofill:focus,
+  input:autofill:active,
+  textarea:-webkit-autofill,
+  textarea:autofill,
+  select:-webkit-autofill,
+  select:autofill {
+    -webkit-box-shadow: 0 0 0 1000px #000000 inset !important;
+    box-shadow: 0 0 0 1000px #000000 inset !important;
+    -webkit-text-fill-color: #ffffff !important;
+    color: #ffffff !important;
+    caret-color: #ffffff !important;
+    border-color: rgba(255, 255, 255, 0.10) !important;
+    transition: background-color 999999s ease-in-out 0s;
+  }
+
+  input:-webkit-autofill:focus,
+  input:autofill:focus {
+    border-color: rgba(0, 209, 143, 0.5) !important;
+  }
+
+  /* ── React-hot-toast container — top-right, below header ───────────── */
+  [data-hot-toast-container] {
+    top: 64px !important;
+    right: 16px !important;
+    left: auto !important;
+    bottom: auto !important;
+  }
+}
+
+/* ─── Color Palette (Dark Obsidian) ────────────────────────────────────── */
+:root {
+  --voxy-primary: #00D18F;
+  --voxy-primary-dim: rgba(0, 209, 143, 0.12);
+  --voxy-text: #ffffff;
+  --voxy-muted: #94a3b8;
+  --voxy-subtle: #64748b;
+  --voxy-surface: #0a0a0a;
+  --voxy-border: rgba(255, 255, 255, 0.08);
+
+  /* Base dark */
+  --background: #000000;
+  --foreground: #ffffff;
+  --card: #0a0a0a;
+  --card-foreground: #ffffff;
+  --popover: #0a0a0a;
+  --popover-foreground: #ffffff;
+  --primary: #00D18F;
+  --primary-foreground: #000000;
+  --secondary: #111111;
+  --secondary-foreground: #94a3b8;
+  --muted: #111111;
+  --muted-foreground: #94a3b8;
+  --accent: #111111;
+  --accent-foreground: #ffffff;
+  --destructive: #ef4444;
+  --border: rgba(255, 255, 255, 0.08);
+  --input: rgba(255, 255, 255, 0.08);
+  --ring: #00D18F;
+  --radius: 1rem;
+}
+
+/* ─── Verity-inspired Bento & Glass Utilities ────────────────────────── */
+
+/* Section eyebrow pill */
+.eyebrow-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  background: rgba(0, 209, 143, 0.08);
+  color: #00D18F;
+  border: 1px solid rgba(0, 209, 143, 0.2);
+}
+
+/* Sleek Bento Card */
+.bento-card {
+  background: #0a0a0a;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 1.5rem;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.bento-card:hover {
+  border-color: rgba(0, 209, 143, 0.3);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 30px -10px rgba(0, 209, 143, 0.12);
+}
