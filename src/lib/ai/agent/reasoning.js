@@ -1,0 +1,255 @@
+/**
+ * Reasoning-layer boundary.
+ *
+ * This is the seam between "the app decided what to ask" and "a model produced a
+ * grounded answer." It defines the request/response shape ({@link ReasoningRequest}
+ * / {@link ReasoningResponse}) and delegates to the existing unified interface
+ * (`generateAIResponse` → `generateAI`), which already carries the resilient
+ * provider chain, circuit breaker, security scanning, and observability.
+ *
+ * S2 + Tool Execution additions:
+ *   - System-instruction builder (`buildSystemInstruction`)
+ *   - Conversation-context interface (`buildReasoningRequest`)
+ *   - Tool Execution loop (`parseToolCall` & `executeToolCall` via `ToolRegistry`)
+ *   - Structured error / fallback (`withReasoningFallback`)
+ */
+
+import { generateAIResponse } from '../core/generateAIResponse.js';
+import { REASONING_MODEL } from './model.js';
+import { buildSystemInstruction } from './systemInstruction.js';
+import { buildReasoningRequest } from './conversationContext.js';
+import { withReasoningFallback } from './fallback.js';
+import { createDefaultToolRegistry } from './tools/index.js';
+import { ToolPermission } from './types.js';
+
+/**
+ * Parse structured tool call JSON from model response text if present.
+ * Supports:
+ *   - ```json { "tool": "product_lookup", "args": { ... } } ```
+ *   - { "tool": "product_lookup", "args": { ... } }
+ *   - { "name": "product_lookup", "arguments": { ... } }
+ *
+ * @param {string} text
+ * @returns {{ name: string, args: Object } | null}
+ */
+export function parseToolCall(rawResult) {
+  if (rawResult && typeof rawResult === 'object' && Array.isArray(rawResult.tool_calls) && rawResult.tool_calls.length > 0) {
+    const tc = rawResult.tool_calls[0];
+    const toolName = tc.function?.name;
+    let args = {};
+    try {
+      args = typeof tc.function?.arguments === 'string' ? JSON.parse(tc.function.arguments) : (tc.function?.arguments || {});
+    } catch {}
+    if (toolName) {
+      if (args && typeof args === 'object') {
+        for (const k of Object.keys(args)) {
+          if (args[k] === null) delete args[k];
+        }
+      }
+      return { name: toolName, args };
+    }
+  }
+
+  const text = typeof rawResult === 'string' ? rawResult : rawResult?.text;
+  if (!text || typeof text !== 'string') return null;
+
+  const jsonBlockMatch = text.match(/```(?:json)?\s*(\{\s*"(?:tool|name)"[\s\S]*?\})\s*```/i);
+  const jsonStr = jsonBlockMatch ? jsonBlockMatch[1] : text.trim();
+
+  if (!jsonStr.startsWith('{')) return null;
+
+  try {
+    const parsed = JSON.parse(jsonStr);
+    const toolName = parsed.tool || parsed.name;
+    const args = parsed.args || parsed.arguments || {};
+    if (toolName && typeof toolName === 'string') {
+      if (args && typeof args === 'object') {
+        for (const k of Object.keys(args)) {
+          if (args[k] === null) delete args[k];
+        }
+      }
+      return { name: toolName, args };
+    }
+  } catch {
+    // Not valid tool JSON
+  }
+  return null;
+}
+
+/**
+ * Execute a tool call against the registry with permission checking and error normalization.
+ *
+ * @param {{ name: string, args: Object }} toolCall
+ * @param {import('./tools/registry.js').ToolRegistry} registry
+ * @param {string[]} grantedPermissions
+ * @param {import('./types.js').AgentContext} context
+ * @returns {Promise<{ ok: boolean, toolName: string, data?: *, error?: string, code?: string, contractRef?: string }>}
+ */
+export async function executeToolCall(toolCall, registry, grantedPermissions, context) {
+  const { name, args } = toolCall;
+  try {
+    const tool = registry.resolve(name, grantedPermissions);
+    const result = await tool.execute(args, context);
+    return { ok: true, toolName: name, data: result };
+  } catch (err) {
+    return {
+      ok: false,
+      toolName: name,
+      error: err.message,
+      code: err.code || 'TOOL_EXECUTION_ERROR',
+      contractRef: err.contractRef || null
+    };
+  }
+}
+
+/**
+ * Run one grounded reasoning turn with iterative tool execution.
+ *
+ * @param {import('./types.js').ReasoningRequest & {
+ *   history?: Array<*>,
+ *   summary?: string,
+ *   grounding?: import('./systemInstruction.js').GroundingContext,
+ *   grantedPermissions?: string[],
+ *   toolRegistry?: import('./tools/registry.js').ToolRegistry,
+ *   context?: import('./types.js').AgentContext
+ * }} request
+ * @returns {Promise<import('./types.js').ReasoningResponse>}
+ */
+export async function runReasoning(request) {
+  const req = request ?? {};
+
+  const usesContext =
+    req.history !== undefined || req.summary !== undefined || req.grounding !== undefined;
+
+  const {
+    messages,
+    systemInstruction = buildSystemInstruction(),
+    userId = null,
+    businessId = null,
+    model = REASONING_MODEL,
+  } = usesContext ? buildReasoningRequest(req) : req;
+
+  const registry = req.toolRegistry ?? req.registry ?? createDefaultToolRegistry();
+  const grantedPermissions = req.grantedPermissions ??
+    req.context?.grantedPermissions ??
+    [ToolPermission.READ_CATALOGUE, ToolPermission.DRAFT_ORDER, ToolPermission.REQUEST_PAYMENT];
+
+  const agentContext = {
+    businessId: req.context?.businessId || businessId || req.grounding?.businessId || 'default-biz',
+    grantedPermissions: req.context?.grantedPermissions || grantedPermissions,
+    data: req.context?.data || req.data || null,
+    confirmation: req.context?.confirmation || req.confirmation || null,
+    customerId: req.context?.customerId || req.customerId || null,
+    customerEmail: req.context?.customerEmail || req.customerEmail || null,
+    conversationId: req.context?.conversationId || req.conversationId || null,
+  };
+
+  const hasPrompt =
+    typeof messages === 'string' ? messages.trim() !== '' : Array.isArray(messages) && messages.length > 0;
+  if (!hasPrompt) {
+    throw new Error('runReasoning requires `messages` (a non-empty history window or prompt string) or `history`.');
+  }
+
+  return withReasoningFallback(async () => {
+    const toolCallsExecuted = [];
+    let currentSystemInstruction = systemInstruction;
+
+    // Build list of permitted tools
+    const availableTools = registry.list().filter(t => grantedPermissions.includes(t.permission));
+
+    let conversationHistory = Array.isArray(messages)
+      ? [...messages]
+      : [{ role: 'user', content: messages }];
+
+    let responseText = '';
+    let lastResult = null;
+    const MAX_TOOL_LOOPS = 3;
+    let loopCount = 0;
+
+    while (loopCount < MAX_TOOL_LOOPS) {
+      loopCount++;
+      lastResult = await generateAIResponse(conversationHistory, currentSystemInstruction, userId, businessId, model, availableTools);
+      responseText = lastResult?.text ?? '';
+
+      const toolCall = parseToolCall(lastResult);
+      if (!toolCall) {
+        // No tool requested; this is the final customer-facing answer
+        break;
+      }
+
+      // Execute tool call via registry
+      const execResult = await executeToolCall(toolCall, registry, grantedPermissions, agentContext);
+      toolCallsExecuted.push(execResult);
+
+      const toolOutputStr = execResult.ok
+        ? JSON.stringify(execResult.data)
+        : `Error: ${execResult.error || 'Execution failed'}`;
+
+      // Append assistant tool request and user tool response to history window
+      conversationHistory.push({ role: 'model', content: responseText || JSON.stringify(toolCall) });
+
+      // Extract active language instruction if present in system prompt
+      const langMatch = typeof currentSystemInstruction === 'string'
+        ? currentSystemInstruction.match(/Primary Conversational Language:\s*([^\.\n]+)/i)
+        : null;
+      const langInstruction = langMatch && langMatch[1]
+        ? ` (CRITICAL: Formulate final response strictly in ${langMatch[1].trim()}. Do NOT switch to standard English after evaluating tool results.)`
+        : '';
+
+      // Build tool result message — for payment_request, pin the exact checkout URL so the model cannot substitute its own
+      let toolResultContent;
+      if (execResult.toolName === 'payment_request' && execResult.ok && execResult.data?.authorizationUrl) {
+        const checkoutUrl = execResult.data.authorizationUrl;
+        toolResultContent =
+          `[TOOL_RESULT for "payment_request"]: Payment initialized successfully.\n` +
+          `CHECKOUT URL (use this EXACT URL, do not modify or replace it): ${checkoutUrl}\n` +
+          `Reference: ${execResult.data.reference || 'N/A'}\n` +
+          `CRITICAL: Present the Pay Now button using ONLY this URL: [Pay Now](${checkoutUrl})\n` +
+          `Do NOT write any other URL. Do NOT fabricate or modify the checkout URL under any circumstances.\n` +
+          `Now write the final customer-facing response confirming the order and presenting the Pay Now button.${langInstruction}`;
+      } else {
+        toolResultContent =
+          `[TOOL_RESULT for "${execResult.toolName}"]: ${toolOutputStr}\n` +
+          `Now evaluate this result and provide the next step or final response to the customer.${langInstruction}`;
+      }
+
+      conversationHistory.push({
+        role: 'user',
+        content: toolResultContent,
+      });
+    }
+
+    // ── Post-process: enforce real payment URL if payment_request ran ──────────
+    const paymentExec = toolCallsExecuted.find(
+      t => t.toolName === 'payment_request' && t.ok && t.data?.authorizationUrl,
+    );
+    if (paymentExec) {
+      const realUrl = paymentExec.data.authorizationUrl;
+      if (!responseText || responseText.trim() === '') {
+        responseText = `Your order is ready! Please click below to complete your payment:\n\n[Pay Now](${realUrl})`;
+      } else {
+        // Replace any bracketed Pay Now link that doesn't use the real URL
+        responseText = responseText.replace(
+          /\[Pay Now\]\([^)]*\)/gi,
+          `[Pay Now](${realUrl})`,
+        );
+        // Also replace any bare placeholder URLs that slipped through
+        responseText = responseText.replace(
+          /https?:\/\/(?:checkout\.paystack\.com|paystack\.com\/pay)\/(?![\w-]{10,})[^)\s]*/gi,
+          realUrl,
+        );
+        if (!responseText.includes(realUrl)) {
+          responseText += `\n\n[Pay Now](${realUrl})`;
+        }
+      }
+    }
+
+    return {
+      text: responseText,
+      model: lastResult?.model,
+      provider: lastResult?.providerUsed ?? lastResult?.provider,
+      toolCalls: toolCallsExecuted,
+      raw: lastResult,
+    };
+  });
+}
