@@ -141,6 +141,9 @@ importers:
         specifier: ^5.0.12
         version: 5.0.16(@types/react@19.2.14)(immer@11.2.9)(react@19.2.3)(use-sync-external-store@1.7.0(react@19.2.3))
     devDependencies:
+      '@prisma/config':
+        specifier: ^6.19.3
+        version: 6.19.3
       '@tailwindcss/postcss':
         specifier: ^4
         version: 4.3.3

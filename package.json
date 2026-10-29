@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "next dev",
     "generate": "prisma generate",
-    "build": "next build",
+    "build": "prisma generate && next build",
     "start": "next start",
     "lint": "eslint",
     "test": "node tests/agent/llm-client.test.js && node tests/agent/groundingService.test.js && node tests/agent/conversationEngine.test.js && node tests/agent/salesBehavior.test.js && node tests/agent/productTools.test.js && node tests/agent/orderBuilder.test.js && node tests/agent/multilingual.test.js",
@@ -68,6 +68,7 @@
     "zustand": "^5.0.12"
   },
   "devDependencies": {
+    "@prisma/config": "^6.19.3",
     "@tailwindcss/postcss": "^4",
     "@types/react": "19.2.14",
     "babel-plugin-react-compiler": "1.0.0",
