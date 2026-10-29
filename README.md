@@ -176,7 +176,7 @@ The single source of truth for scope and architecture is the **[Product Requirem
 
 ## 👥 Team
 
-Three parallel streams (see PRD §9):
+Two parallel streams: 
 
 - **[Abraham](https://github.com/abraham123-dev)** — Frontend / UX
 - **[Samkiel](https://github.com/samkiell)** — AI / Agent / Backend
