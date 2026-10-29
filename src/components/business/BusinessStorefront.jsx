@@ -92,7 +92,7 @@ const BusinessStorefront = ({ business, isPreview = false }) => {
                   Preview Mode
                 </Button>
               ) : (
-                <Link href={`/chat/${business.slug}`} className="w-full sm:w-auto">
+                <Link href={`/${business.slug}/chat`} className="w-full sm:w-auto">
                   <Button className="group/btn w-full h-14 sm:h-16 px-8 sm:px-12 rounded-2xl sm:rounded-[2rem] bg-black dark:bg-white text-white dark:text-black font-black uppercase tracking-[0.15em] sm:tracking-[0.2em] text-[10px] sm:text-[11px] hover:scale-105 active:scale-95 transition-all shadow-[0_20px_40px_-10px_rgba(0,0,0,0.3)] dark:shadow-[0_20px_40px_-10px_rgba(255,255,255,0.1)] relative overflow-hidden">
                     <div className="absolute inset-0 bg-gradient-to-r from-[#00D18F] to-emerald-400 opacity-0 group-hover/btn:opacity-100 transition-opacity duration-500"></div>
                     <span className="relative z-10 flex items-center justify-center">
@@ -232,7 +232,7 @@ const BusinessStorefront = ({ business, isPreview = false }) => {
                 </div>
               </div>
 
-              <Link href={isPreview ? "#" : `/chat/${business.slug}`}>
+              <Link href={isPreview ? "#" : `/${business.slug}/chat`}>
                 <Button className="group/secure w-full bg-black text-white hover:bg-zinc-900 dark:hover:bg-zinc-800 rounded-2xl sm:rounded-3xl h-14 sm:h-16 font-black uppercase tracking-[0.15em] sm:tracking-[0.2em] text-[10px] sm:text-[11px] shadow-2xl transition-all active:scale-[0.98] border border-white/10">
                   <span className="flex items-center justify-center gap-3">
                     Start Voice Interaction

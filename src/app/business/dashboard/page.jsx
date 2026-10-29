@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useAuth } from "@/hooks/useAuth";
-import { useBusiness, useCustomers, useOrders, useProducts, useHandoffAlerts } from "@/hooks/useBusinessData";
+import { useBusiness, useCustomers, useOrders, useProducts, useHandoffAlerts, useBusinessAnalytics } from "@/hooks/useBusinessData";
 
 import { SkeletonCard, SkeletonText } from "@/components/ui/Skeleton";
 import {
@@ -35,19 +35,39 @@ function formatNGN(kobo) {
 }
 
 // ── KPI Strip — compact, desktop-dense ───────────────────────────────────────
-function KpiStrip({ customers, orders, products, ordersLoading, custsLoading, prodsLoading }) {
-  const revenue = (orders || []).reduce((s, o) => s + (o.totalKobo || 0), 0);
-  const paidCount = (orders || []).filter((o) => o.status === "paid").length;
+function KpiStrip({ customers, orders, products, analytics, ordersLoading, custsLoading, prodsLoading, analyticsLoading }) {
+  const fallbackRevenue = (orders || []).reduce((s, o) => s + (o.totalKobo || 0), 0);
+  const revenue = analytics?.totalRevenueKobo !== undefined ? analytics.totalRevenueKobo : fallbackRevenue;
+  const paidCount = analytics?.ordersByStatus?.paid !== undefined
+    ? analytics.ordersByStatus.paid
+    : (orders || []).filter((o) => o.status === "paid").length;
+
+  const totalOrders = analytics?.totalOrders !== undefined ? analytics.totalOrders : (orders || []).length;
+  const totalCustomers = analytics?.totalCustomers !== undefined ? analytics.totalCustomers : (customers || []).length;
+  const totalConversations = analytics?.totalConversations !== undefined ? analytics.totalConversations : null;
+  const activeConversations = analytics?.conversationsByStatus?.active !== undefined ? analytics.conversationsByStatus.active : 0;
 
   const items = [
     { label: "Revenue", value: ordersLoading ? null : formatNGN(revenue), sub: `${paidCount} paid`, href: "/business/orders", color: "text-[#00D18F]", loading: ordersLoading },
-    { label: "Orders", value: ordersLoading ? null : (orders || []).length, sub: "total orders", href: "/business/orders", loading: ordersLoading },
-    { label: "Customers", value: custsLoading ? null : (customers || []).length, sub: "total customers", href: "/business/customers", loading: custsLoading },
+    { label: "Orders", value: ordersLoading ? null : totalOrders, sub: "total orders", href: "/business/orders", loading: ordersLoading },
+    { label: "Customers", value: custsLoading ? null : totalCustomers, sub: "total customers", href: "/business/customers", loading: custsLoading },
     { label: "Products", value: prodsLoading ? null : (products || []).length, sub: "in catalogue", href: "/business/products", loading: prodsLoading },
   ];
 
+  if (totalConversations !== null) {
+    items.push({
+      label: "Conversations",
+      value: totalConversations,
+      sub: `${activeConversations} active`,
+      href: "/business/inbox",
+      loading: analyticsLoading,
+    });
+  }
+
+  const gridColsClass = items.length === 5 ? "grid grid-cols-2 lg:grid-cols-5 gap-3" : "grid grid-cols-2 lg:grid-cols-4 gap-3";
+
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+    <div className={gridColsClass}>
       {items.map((item, idx) => {
         if (item.loading) {
           return <SkeletonCard key={item.label || idx} />;
@@ -377,6 +397,7 @@ export default function DashboardPage() {
   const { data: customers, isLoading: custsLoading } = useCustomers(user?.id);
   const { data: orders, isLoading: ordersLoading } = useOrders(user?.id, { limit: 10 });
   const { data: products, isLoading: prodsLoading } = useProducts(user?.id, { available: false });
+  const { data: analytics, isLoading: analyticsLoading } = useBusinessAnalytics(user?.id);
 
   const businessName = business?.name || user?.name || "there";
   const slug = business?.slug || user?.slug;
@@ -450,9 +471,11 @@ export default function DashboardPage() {
           customers={customers}
           orders={orders}
           products={products}
+          analytics={analytics}
           ordersLoading={ordersLoading && !orders}
           custsLoading={custsLoading && !customers}
           prodsLoading={prodsLoading && !products}
+          analyticsLoading={analyticsLoading && !analytics}
         />
 
         {/* Two-column: Setup checklist + Share link */}

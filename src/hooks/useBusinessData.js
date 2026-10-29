@@ -10,7 +10,7 @@
  */
 
 import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
-import { getBusiness, getWalletBalance, getLedgerTransactions } from "@/lib/api/business";
+import { getBusiness, getWalletBalance, getLedgerTransactions, getBusinessAnalytics } from "@/lib/api/business";
 import { listCustomers, getCustomer } from "@/lib/api/customers";
 import { listOrders, getOrder } from "@/lib/api/orders";
 import { listProducts } from "@/lib/api/products";
@@ -206,6 +206,18 @@ export function usePrefetch() {
   };
 }
 
+/** Business aggregated analytics. staleTime: 1 min */
+export function useBusinessAnalytics(businessId, options = {}) {
+  return useQuery({
+    queryKey: ["analytics", businessId],
+    queryFn:  () => getBusinessAnalytics(businessId),
+    enabled:  !!businessId,
+    staleTime: 60_000,
+    placeholderData: keepPreviousData,
+    ...options,
+  });
+}
+
 // ── Invalidation helpers ──────────────────────────────────────────────────────
 /** After a mutation, call these to invalidate and trigger background refetch */
 export function useInvalidators() {
@@ -218,6 +230,7 @@ export function useInvalidators() {
     invalidateOrder:     (id) => queryClient.invalidateQueries({ queryKey: keys.order(id) }),
     invalidateWallet:    (id) => queryClient.invalidateQueries({ queryKey: keys.wallet(id) }),
     invalidateLedger:    (id) => queryClient.invalidateQueries({ queryKey: ["ledger", id] }),
+    invalidateAnalytics: (id) => queryClient.invalidateQueries({ queryKey: ["analytics", id] }),
   };
 }
 

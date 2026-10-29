@@ -74,7 +74,7 @@ export default function AIEmployeePage() {
   useEffect(() => {
     if (!business) return;
     const ai = business?.aiConfig || {};
-    setPersona(ai.persona || "Voxy");
+    setPersona(ai.employeeName || ai.persona || "Voxy");
     setTone(ai.tone || "friendly");
     setGreeting(ai.greeting || `Hi! Welcome to ${business?.name || "our business"}. How can I help you today?`);
     setFallbackMessage(ai.fallbackMessage || "Let me connect you with a team member who can help.");
@@ -118,6 +118,7 @@ export default function AIEmployeePage() {
     try {
       await updateBusiness(user.id, {
         aiConfig: {
+          employeeName: persona.trim() || "Voxy",
           persona: persona.trim() || "Voxy",
           tone,
           greeting: greeting.trim(),
