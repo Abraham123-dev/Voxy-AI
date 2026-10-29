@@ -16,8 +16,11 @@ import {
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 
+const MIN_WITHDRAWAL_NAIRA = 1000;
+const MIN_WITHDRAWAL_KOBO = 100000;
+
 function formatNGN(koboAmount) {
-  if (koboAmount == null) return "?0";
+  if (koboAmount == null) return "₦0";
   const naira = Number(koboAmount) / 100;
   return new Intl.NumberFormat("en-NG", {
     style: "currency",
@@ -73,8 +76,8 @@ function PayoutDrawer({ wallet, onClose, onSuccess }) {
   const handleWithdraw = async (e) => {
     e.preventDefault();
     const amountKobo = Math.round(Number(withdrawAmount) * 100);
-    if (!amountKobo || amountKobo <= 0) {
-      toast.error("Enter a valid amount");
+    if (!amountKobo || amountKobo < MIN_WITHDRAWAL_KOBO) {
+      toast.error(`Minimum withdrawal amount is ₦${MIN_WITHDRAWAL_NAIRA.toLocaleString()}`);
       return;
     }
     if (amountKobo > (wallet.availableBalanceKobo || 0)) {
@@ -140,16 +143,28 @@ function PayoutDrawer({ wallet, onClose, onSuccess }) {
             </div>
 
             <div>
-              <label className={labelCls}>Amount (?)</label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider">Amount (₦)</label>
+                <span className="text-[11px] text-zinc-500">Min ₦1,000</span>
+              </div>
               <input
                 type="number"
-                min="0"
+                min="1000"
+                step="100"
                 placeholder="e.g. 50,000"
                 value={withdrawAmount}
                 onChange={(e) => setWithdrawAmount(e.target.value)}
                 className={inputCls}
                 required
               />
+              {Number(withdrawAmount) > 0 && (
+                <div className="text-[11px] text-zinc-500 mt-1 flex justify-between">
+                  <span>Balance after payout:</span>
+                  <span className="font-mono text-zinc-300">
+                    {formatNGN(Math.max(0, (wallet.availableBalanceKobo || 0) - Number(withdrawAmount) * 100))}
+                  </span>
+                </div>
+              )}
             </div>
 
             <div>
@@ -257,6 +272,14 @@ export default function WalletPage() {
   const isFetching = fetchingWallet || fetchingLedger;
 
   const [showPayout, setShowPayout] = useState(false);
+  const [ledgerFilter, setLedgerFilter] = useState("all");
+
+  const filteredTransactions = transactions.filter((t) => {
+    const isCredit = t.type === "credit" || (t.amountKobo && t.amountKobo > 0);
+    if (ledgerFilter === "credit") return isCredit;
+    if (ledgerFilter === "debit") return !isCredit;
+    return true;
+  });
 
   const creditTotal = transactions
     .filter((t) => t.type === "credit" || t.amountKobo > 0)
@@ -274,7 +297,7 @@ export default function WalletPage() {
             <h1 className="text-xl font-bold text-white">Wallet</h1>
             <p className="text-xs text-zinc-500 mt-0.5">
               {loadingWallet
-                ? "Loading�"
+                ? "Loading…"
                 : `Settlement balance and ${transactions.length} transactions`}
             </p>
           </div>
@@ -396,8 +419,29 @@ export default function WalletPage() {
             </div>
           ) : (
             <>
+              {/* Filter tabs */}
+              <div className="flex items-center gap-1.5 pt-3">
+                {[
+                  { id: "all", label: `All (${transactions.length})` },
+                  { id: "credit", label: `Inflow (${transactions.filter((t) => t.type === "credit" || t.amountKobo > 0).length})` },
+                  { id: "debit", label: `Outflow (${transactions.filter((t) => t.type !== "credit" && t.amountKobo <= 0).length})` },
+                ].map((f) => (
+                  <button
+                    key={f.id}
+                    onClick={() => setLedgerFilter(f.id)}
+                    className={`px-3 py-1 rounded-lg text-xs font-medium transition-all ${
+                      ledgerFilter === f.id
+                        ? "bg-white/10 text-white border border-white/15"
+                        : "text-zinc-500 hover:text-zinc-300"
+                    }`}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+
               {/* Desktop table */}
-              <div className="hidden sm:block rounded-2xl border border-white/[0.07] overflow-hidden mt-4">
+              <div className="hidden sm:block rounded-2xl border border-white/[0.07] overflow-hidden mt-3">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-white/[0.06]">
@@ -414,7 +458,7 @@ export default function WalletPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {transactions.map((tx, i) => {
+                    {filteredTransactions.map((tx, i) => {
                       const isCredit =
                         tx.type === "credit" ||
                         (tx.amountKobo && tx.amountKobo > 0);
@@ -474,7 +518,7 @@ export default function WalletPage() {
                           <td className="px-4 py-3 text-xs text-zinc-600 font-mono tabular-nums">
                             {tx.balanceAfterKobo != null
                               ? formatNGN(tx.balanceAfterKobo)
-                              : "�"}
+                              : "—"}
                           </td>
                         </tr>
                       );
@@ -484,8 +528,8 @@ export default function WalletPage() {
               </div>
 
               {/* Mobile list */}
-              <div className="sm:hidden rounded-2xl border border-white/[0.07] overflow-hidden mt-4">
-                {transactions.map((tx, i) => {
+              <div className="sm:hidden rounded-2xl border border-white/[0.07] overflow-hidden mt-3">
+                {filteredTransactions.map((tx, i) => {
                   const isCredit =
                     tx.type === "credit" ||
                     (tx.amountKobo && tx.amountKobo > 0);
