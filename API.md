@@ -292,6 +292,34 @@ https://<YOUR-DEPLOYED-DOMAIN>/api/v1/payments/callback
 
 ---
 
+
+#### 4. Get Business Analytics & Summary Metrics
+- **Method**: `GET`
+- **Path**: `/api/v1/businesses/[id]/analytics`
+- **Auth**: Bearer Token (`Business Owner`)
+- **Description**: Aggregates business-wide metrics including gross revenue, paid order count, pending order count, average order value, total registered customers, and active conversations.
+- **Response** (`200 OK`):
+```json
+{
+  "data": {
+    "summary": {
+      "totalRevenueKobo": 45000000,
+      "totalOrders": 12,
+      "paidOrders": 9,
+      "pendingOrders": 2,
+      "cancelledOrders": 1,
+      "averageOrderValueKobo": 3750000,
+      "totalCustomers": 8,
+      "activeConversations": 3
+    },
+    "recentOrders": []
+  },
+  "error": null
+}
+```
+
+---
+
 ### 📦 MODULE 3: PRODUCTS (`/api/v1/products`)
 
 #### 1. List Business Products
@@ -352,6 +380,47 @@ https://<YOUR-DEPLOYED-DOMAIN>/api/v1/payments/callback
 - **Method**: `GET`
 - **Path**: `/api/v1/customers?page=1&limit=20`
 - **Auth**: Bearer Token (`Business Owner`)
+
+---
+
+
+#### 3. Get Customer by ID (With Orders & Conversations)
+- **Method**: `GET`
+- **Path**: `/api/v1/customers/[id]`
+- **Auth**: Bearer Token (`Business Owner`)
+- **Description**: Returns complete customer profile, aggregate lifetime value (LTV), total order count, and linked order and conversation records.
+- **Response** (`200 OK`):
+```json
+{
+  "data": {
+    "customer": {
+      "id": "640bd351-cd67-4b22-925c-97e6abbb870e",
+      "name": "Tunde Afolabi",
+      "email": "tunde@example.com",
+      "phone": "+2348012345678",
+      "totalSpendKobo": 9000000,
+      "ordersCount": 2,
+      "orders": [],
+      "conversations": []
+    }
+  },
+  "error": null
+}
+```
+
+#### 4. Update Customer Contact Details
+- **Method**: `PATCH`
+- **Path**: `/api/v1/customers/[id]`
+- **Auth**: Bearer Token (`Business Owner`)
+- **Request Body**:
+```json
+{
+  "name": "Tunde Afolabi",
+  "phone": "+2348012345678",
+  "email": "tunde.new@example.com",
+  "address": "12 Marina Street, Lagos Island"
+}
+```
 
 ---
 
