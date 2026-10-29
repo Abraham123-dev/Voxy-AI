@@ -6,12 +6,14 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useAuth } from "@/hooks/useAuth";
 import { useCustomers } from "@/hooks/useBusinessData";
 import { SkeletonTable, SkeletonMobileCard, RefreshIndicator } from "@/components/ui/Skeleton";
+import { formatNGN } from "@/lib/api/products";
 import {
   Users,
   Search,
   X,
   ChevronRight,
   Globe,
+  ShoppingBag,
 } from "lucide-react";
 
 function timeAgo(dateStr) {
@@ -102,8 +104,8 @@ export default function CustomersPage() {
             <div className="hidden sm:block">
               <SkeletonTable
                 rows={7}
-                cols={4}
-                headers={["Customer", "Channel", "Last active", ""]}
+                cols={6}
+                headers={["Customer", "Contact", "Orders", "Total Spend", "Channel", "Last active"]}
               />
             </div>
             <div className="sm:hidden rounded-2xl border border-white/[0.07] overflow-hidden">
@@ -135,6 +137,8 @@ export default function CustomersPage() {
                   <tr className="border-b border-white/[0.06]">
                     <th className="text-left text-[11px] font-semibold uppercase tracking-wider text-zinc-600 px-4 py-3">Customer</th>
                     <th className="text-left text-[11px] font-semibold uppercase tracking-wider text-zinc-600 px-4 py-3">Contact</th>
+                    <th className="text-left text-[11px] font-semibold uppercase tracking-wider text-zinc-600 px-4 py-3">Orders</th>
+                    <th className="text-left text-[11px] font-semibold uppercase tracking-wider text-zinc-600 px-4 py-3">Total Spend</th>
                     <th className="text-left text-[11px] font-semibold uppercase tracking-wider text-zinc-600 px-4 py-3">Channel</th>
                     <th className="text-left text-[11px] font-semibold uppercase tracking-wider text-zinc-600 px-4 py-3">Last active</th>
                     <th className="w-10" />
@@ -157,6 +161,17 @@ export default function CustomersPage() {
                       <td className="px-4 py-3 text-zinc-400 text-xs">
                         <Link href={`/business/customers/${c.id}`} className="block">
                           {c.email || c.phone || "—"}
+                        </Link>
+                      </td>
+                      <td className="px-4 py-3 text-xs text-zinc-300">
+                        <Link href={`/business/customers/${c.id}`} className="flex items-center gap-1.5">
+                          <ShoppingBag className="size-3.5 text-zinc-600" />
+                          <span>{c.ordersCount ?? 0}</span>
+                        </Link>
+                      </td>
+                      <td className="px-4 py-3 text-xs font-medium text-[#00D18F]">
+                        <Link href={`/business/customers/${c.id}`} className="block">
+                          {formatNGN(c.totalSpend || 0)}
                         </Link>
                       </td>
                       <td className="px-4 py-3">
@@ -195,6 +210,9 @@ export default function CustomersPage() {
                   <div className="min-w-0 flex-1">
                     <div className="text-sm font-medium text-white truncate">{c.name || "Unknown"}</div>
                     <div className="text-[11px] text-zinc-600 truncate">{c.email || c.phone || "—"}</div>
+                    <div className="text-[11px] text-[#00D18F] font-medium mt-0.5">
+                      {c.ordersCount ?? 0} orders • {formatNGN(c.totalSpend || 0)}
+                    </div>
                   </div>
                   <div className="text-xs text-zinc-600 shrink-0">{timeAgo(c.updatedAt)}</div>
                   <ChevronRight className="size-4 text-zinc-700 shrink-0" />

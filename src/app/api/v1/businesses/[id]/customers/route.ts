@@ -14,7 +14,7 @@ const customerUpsertSchema = z.object({
 
 // Helper for route protection to keep code DRY
 async function validateAuth(req: NextRequest, businessId: string) {
-  const auth = await getAuthUser(req); // Await if async in your lib
+  const auth = await getAuthUser(req);
   if (!auth) return { error: errorResponse('UNAUTHORIZED', 'Invalid or missing access token', 401), status: 401 };
   if (auth.businessId !== businessId) return { error: errorResponse('FORBIDDEN', 'Access denied', 403), status: 403 };
   return { auth };
@@ -123,9 +123,52 @@ export async function GET(
   }
 
   try {
-    const customers = await prisma.customer.findMany({
+    const rawCustomers = await prisma.customer.findMany({
       where: { businessId },
+      include: {
+        orders: {
+          select: {
+            id: true,
+            totalAmount: true,
+            status: true,
+            createdAt: true,
+          },
+          orderBy: { createdAt: 'desc' },
+        },
+        _count: {
+          select: {
+            conversations: true,
+            orders: true,
+          },
+        },
+      },
       orderBy: { createdAt: 'desc' },
+    });
+
+    const customers = rawCustomers.map((c) => {
+      const successfulOrders = c.orders.filter(
+        (o) => o.status === 'confirmed' || o.status === 'paid' || o.status === 'delivered'
+      );
+      const totalSpend = successfulOrders.reduce(
+        (sum, o) => sum + Number(o.totalAmount || 0),
+        0
+      );
+      const lastOrderAt = c.orders.length > 0 ? c.orders[0].createdAt : null;
+
+      return {
+        id: c.id,
+        businessId: c.businessId,
+        name: c.name,
+        phone: c.phone,
+        email: c.email,
+        channel: c.channel,
+        ordersCount: c._count.orders,
+        conversationsCount: c._count.conversations,
+        totalSpend,
+        lastOrderAt,
+        createdAt: c.createdAt,
+        updatedAt: c.updatedAt,
+      };
     });
 
     logRequest({ method: 'GET', path, status: 200, latencyMs: Date.now() - startTime, userId: auth?.businessId });
