@@ -202,7 +202,7 @@ export default function PublicVoxyChat({ business }) {
                 {SUGGESTED_INTENTS.map((intent, idx) => (
                   <Link
                     key={idx}
-                    href={`${baseChatUrl}&msg=${encodeURIComponent(intent.query)}`}
+                    href={`${baseChatUrl}?msg=${encodeURIComponent(intent.query)}`}
                     className="p-3.5 rounded-xl border border-white/[0.07] bg-white/[0.02] hover:bg-white/[0.05] hover:border-white/[0.15] text-xs text-zinc-200 hover:text-white flex items-center justify-between transition-colors"
                   >
                     <span>{intent.label}</span>
@@ -241,7 +241,7 @@ export default function PublicVoxyChat({ business }) {
             </div>
 
             {/* Catalogue Highlights */}
-            {hasProducts && (
+            {hasProducts ? (
               <div className="space-y-3">
                 <div className="flex items-center justify-between px-1">
                   <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
@@ -264,7 +264,7 @@ export default function PublicVoxyChat({ business }) {
                       ? `₦${Number(product.price).toLocaleString()}`
                       : null;
 
-                    const targetUrl = `${baseChatUrl}&msg=${encodeURIComponent(`Tell me about ${product.name}`)}`;
+                    const targetUrl = `${baseChatUrl}?msg=${encodeURIComponent(`Tell me about ${product.name}`)}`;
 
                     return (
                       <Link
@@ -299,6 +299,16 @@ export default function PublicVoxyChat({ business }) {
                     );
                   })}
                 </div>
+              </div>
+            ) : (
+              <div className="p-6 rounded-2xl border border-white/[0.07] bg-white/[0.02] text-center space-y-2">
+                <div className="size-10 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center mx-auto text-zinc-400">
+                  <ShoppingBag className="size-5" />
+                </div>
+                <h4 className="text-xs font-semibold text-zinc-200">Catalog coming soon</h4>
+                <p className="text-xs text-zinc-500 max-w-xs mx-auto">
+                  Feel free to chat with {employeeName} directly to ask about items, pricing, or custom requests.
+                </p>
               </div>
             )}
           </div>
