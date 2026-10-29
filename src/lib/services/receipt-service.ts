@@ -1,6 +1,27 @@
 import { prisma } from '@/lib/prisma';
 import crypto from 'crypto';
 
+function formatKoboToNGN(kobo: number): string {
+  const naira = (kobo || 0) / 100;
+  return new Intl.NumberFormat('en-NG', {
+    style: 'currency',
+    currency: 'NGN',
+    maximumFractionDigits: 0,
+  }).format(naira);
+}
+
+function formatReceiptTimestamp(date: Date | string): string {
+  const d = new Date(date);
+  return d.toLocaleString('en-NG', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+  });
+}
+
 export class ReceiptService {
   /**
    * Generates a receipt for a successfully verified payment and order.
@@ -77,12 +98,15 @@ export class ReceiptService {
         id: order.id,
         currency: order.currency,
         totalKobo: order.totalKobo,
+        formattedTotal: formatKoboToNGN(order.totalKobo),
         items: order.items.map((item) => ({
           productId: item.productId,
           productName: item.product.name,
           quantity: item.quantity,
           unitPriceKobo: item.unitPriceKobo,
+          formattedUnitPrice: formatKoboToNGN(item.unitPriceKobo),
           subtotalKobo: item.quantity * item.unitPriceKobo,
+          formattedSubtotal: formatKoboToNGN(item.quantity * item.unitPriceKobo),
         })),
       },
       payment: {
@@ -91,7 +115,9 @@ export class ReceiptService {
         providerReference: payment.providerReference,
         channel: payment.channel,
         amountKobo: payment.amountKobo,
+        formattedAmount: formatKoboToNGN(payment.amountKobo),
         paidAt: payment.paidAt ? payment.paidAt.toISOString() : new Date().toISOString(),
+        formattedPaidAt: formatReceiptTimestamp(payment.paidAt || new Date()),
       },
     };
 
@@ -174,5 +200,30 @@ export class ReceiptService {
     }
 
     return receipt;
+  }
+
+  /**
+   * Formats a clean conversational receipt summary text for chat, SMS, or WhatsApp
+   */
+  static formatReceiptSummary(receipt: {
+    receiptNumber: string;
+    business?: { name?: string | null };
+    amountKobo: number;
+    currency?: string;
+    paymentDate?: Date | string | null;
+    payment?: { channel?: string | null; reference?: string | null };
+  }): string {
+    const store = receipt.business?.name || 'Store';
+    const amount = formatKoboToNGN(receipt.amountKobo);
+    const dateStr = receipt.paymentDate ? formatReceiptTimestamp(receipt.paymentDate) : 'Recently';
+    const channel = receipt.payment?.channel ? ` via ${receipt.payment.channel}` : '';
+
+    return [
+      `🧾 *Receipt: ${receipt.receiptNumber}*`,
+      `Store: ${store}`,
+      `Total: ${amount}${channel}`,
+      `Date: ${dateStr}`,
+      `Status: Paid ✅`,
+    ].join('\n');
   }
 }
