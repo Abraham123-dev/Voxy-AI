@@ -19,6 +19,7 @@ import {
 export default function ProductsPage() {
   const { user } = useAuth();
   const [search, setSearch] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("all");
   const [showAll, setShowAll] = useState(true);
   const searchTimeoutRef = useRef(null);
   const [deferredSearch, setDeferredSearch] = useState("");
@@ -26,10 +27,18 @@ export default function ProductsPage() {
   // React Query — client-side filter for search to avoid unnecessary requests
   const { data: allProducts = [], isLoading, isFetching } = useProducts(user?.id, { available: false });
 
+  // Extract unique categories
+  const categories = useMemo(() => {
+    return Array.from(new Set(allProducts.map((p) => p.category).filter(Boolean)));
+  }, [allProducts]);
+
   // Filter locally (data is cached — no network request per keystroke)
   const products = useMemo(() => {
     let list = allProducts;
     if (!showAll) list = list.filter((p) => p.isAvailable);
+    if (selectedCategory !== "all") {
+      list = list.filter((p) => p.category === selectedCategory);
+    }
     if (deferredSearch.trim()) {
       const q = deferredSearch.toLowerCase();
       list = list.filter((p) =>
@@ -39,7 +48,7 @@ export default function ProductsPage() {
       );
     }
     return list;
-  }, [allProducts, deferredSearch, showAll]);
+  }, [allProducts, deferredSearch, showAll, selectedCategory]);
 
   const handleSearchChange = (e) => {
     const val = e.target.value;
@@ -50,6 +59,7 @@ export default function ProductsPage() {
 
   const active = allProducts.filter((p) => p.isAvailable && p.stockQuantity !== 0).length;
   const outOfStock = allProducts.filter((p) => p.stockQuantity === 0).length;
+  const lowStock = allProducts.filter((p) => p.stockQuantity !== null && p.stockQuantity > 0 && p.stockQuantity <= 5).length;
 
   return (
     <DashboardLayout title="Products">
@@ -61,7 +71,7 @@ export default function ProductsPage() {
             <p className="text-xs text-zinc-500 mt-0.5">
               {isLoading
                 ? "Loading…"
-                : `${allProducts.length} total · ${active} active${outOfStock > 0 ? ` · ${outOfStock} out of stock` : ""}`}
+                : `${allProducts.length} total · ${active} active${lowStock > 0 ? ` · ${lowStock} low stock` : ""}${outOfStock > 0 ? ` · ${outOfStock} out of stock` : ""}`}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -76,7 +86,7 @@ export default function ProductsPage() {
         </div>
 
         {/* Search & filter */}
-        <div className="flex items-center gap-2 mb-5">
+        <div className="flex items-center gap-2 mb-3">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-zinc-500" />
             <input
@@ -106,6 +116,35 @@ export default function ProductsPage() {
             {showAll ? "All products" : "Active only"}
           </button>
         </div>
+
+        {/* Category pills */}
+        {categories.length > 0 && (
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-4 mb-2 scrollbar-none">
+            <button
+              onClick={() => setSelectedCategory("all")}
+              className={`px-3 py-1 rounded-full text-xs font-medium transition-all shrink-0 ${
+                selectedCategory === "all"
+                  ? "bg-white/10 text-white border border-white/20"
+                  : "bg-white/[0.02] text-zinc-500 hover:text-zinc-300 border border-transparent"
+              }`}
+            >
+              All Categories
+            </button>
+            {categories.map((cat) => (
+              <button
+                key={cat}
+                onClick={() => setSelectedCategory(cat)}
+                className={`px-3 py-1 rounded-full text-xs font-medium transition-all shrink-0 capitalize ${
+                  selectedCategory === cat
+                    ? "bg-[#00D18F]/15 text-[#00D18F] border border-[#00D18F]/30 font-semibold"
+                    : "bg-white/[0.02] text-zinc-500 hover:text-zinc-300 border border-transparent"
+                }`}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Skeleton */}
         {isLoading && (
@@ -162,6 +201,7 @@ export default function ProductsPage() {
                   {products.map((p, i) => {
                     const effective = (p.priceKobo || 0) - (p.discountKobo || 0);
                     const isOut = p.stockQuantity === 0;
+                    const isLow = !isOut && p.stockQuantity !== null && p.stockQuantity !== undefined && p.stockQuantity <= 5;
                     return (
                       <tr
                         key={p.id}
@@ -203,6 +243,10 @@ export default function ProductsPage() {
                                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-red-500/10 text-red-400 border border-red-500/20 text-xs font-semibold">
                                   0 (Out of stock)
                                 </span>
+                              ) : isLow ? (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-400 border border-amber-500/20 text-xs font-semibold">
+                                  {p.stockQuantity} left (Low)
+                                </span>
                               ) : (
                                 <span className="text-zinc-300">{p.stockQuantity} left</span>
                               )
@@ -217,11 +261,13 @@ export default function ProductsPage() {
                             <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full ${
                               isOut
                                 ? "bg-red-500/10 text-red-400 border border-red-500/20"
+                                : isLow
+                                ? "bg-amber-500/10 text-amber-400 border border-amber-500/20"
                                 : p.isAvailable
                                 ? "bg-[#00D18F]/10 text-[#00D18F]"
                                 : "bg-white/5 text-zinc-500"
                             }`}>
-                              {isOut ? "Out of Stock" : p.isAvailable ? "Active" : "Hidden"}
+                              {isOut ? "Out of Stock" : isLow ? "Low Stock" : p.isAvailable ? "Active" : "Hidden"}
                             </span>
                           </Link>
                         </td>
@@ -230,12 +276,12 @@ export default function ProductsPage() {
                           <Link
                             href={`/business/products/${p.id}/edit`}
                             className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg transition-all text-xs ${
-                              isOut
-                                ? "bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/30 font-semibold"
+                              isOut || isLow
+                                ? "bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 border border-amber-500/30 font-semibold"
                                 : "text-zinc-500 hover:text-white hover:bg-white/[0.06] opacity-0 group-hover:opacity-100"
                             }`}
                           >
-                            <Edit2 className="size-3" /> {isOut ? "Replenish" : "Edit"}
+                            <Edit2 className="size-3" /> {isOut || isLow ? "Replenish" : "Edit"}
                           </Link>
                         </td>
                       </tr>
@@ -250,6 +296,7 @@ export default function ProductsPage() {
               {products.map((p, i) => {
                 const effective = (p.priceKobo || 0) - (p.discountKobo || 0);
                 const isOut = p.stockQuantity === 0;
+                const isLow = !isOut && p.stockQuantity !== null && p.stockQuantity !== undefined && p.stockQuantity <= 5;
                 return (
                   <Link
                     key={p.id}
@@ -268,16 +315,19 @@ export default function ProductsPage() {
                       <div className="text-[11px] text-zinc-500 mt-0.5 flex items-center gap-2">
                         <span>{formatNGN(effective)}</span>
                         {isOut && <span className="text-red-400 font-semibold">· 0 (Out of stock)</span>}
+                        {isLow && <span className="text-amber-400 font-semibold">· {p.stockQuantity} left (Low)</span>}
                       </div>
                     </div>
                     <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full shrink-0 ${
                       isOut
                         ? "bg-red-500/10 text-red-400 border border-red-500/20"
+                        : isLow
+                        ? "bg-amber-500/10 text-amber-400 border border-amber-500/20"
                         : p.isAvailable
                         ? "bg-[#00D18F]/10 text-[#00D18F]"
                         : "bg-white/5 text-zinc-500"
                     }`}>
-                      {isOut ? "Out of Stock" : p.isAvailable ? "Active" : "Hidden"}
+                      {isOut ? "Out of Stock" : isLow ? "Low Stock" : p.isAvailable ? "Active" : "Hidden"}
                     </span>
                   </Link>
                 );
