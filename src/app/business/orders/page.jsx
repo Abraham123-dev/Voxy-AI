@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useAuth } from "@/hooks/useAuth";
 import { useOrders, useInvalidators } from "@/hooks/useBusinessData";
-import { getOrder, updateOrderStatus, cancelOrder } from "@/lib/api/orders";
+import { getOrder, updateOrderStatus, cancelOrder, checkoutOrder } from "@/lib/api/orders";
 import { formatNGN } from "@/lib/api/products";
 import { SkeletonTable, SkeletonCard, RefreshIndicator } from "@/components/ui/Skeleton";
 import {
@@ -178,6 +178,29 @@ function OrderDetailModal({ orderId, onClose, onStatusChange }) {
       })
       .finally(() => setLoading(false));
   }, [orderId]);
+
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+
+  const handleGenerateCheckout = async () => {
+    if (!order?.id || checkoutLoading) return;
+    setCheckoutLoading(true);
+    try {
+      const res = await checkoutOrder(order.id, {
+        customerEmail: order.customer?.email,
+      });
+      const url = res?.authorizationUrl || res?.paymentLink || (typeof window !== "undefined" ? `${window.location.origin}/pay/${res?.reference || order.id}` : "");
+      if (url && typeof navigator !== "undefined" && navigator.clipboard) {
+        await navigator.clipboard.writeText(url);
+        toast.success("Checkout link copied to clipboard!");
+      } else {
+        toast.success("Checkout link generated!");
+      }
+    } catch (err) {
+      toast.error(err.message || "Failed to generate checkout link");
+    } finally {
+      setCheckoutLoading(false);
+    }
+  };
 
   const handleTransition = async (newStatus) => {
     if (!order?.id || actionLoading) return;
@@ -400,6 +423,15 @@ function OrderDetailModal({ orderId, onClose, onStatusChange }) {
 
               {order.status === "confirmed" && (
                 <div className="flex items-center gap-2 w-full justify-end">
+                  <button
+                    onClick={handleGenerateCheckout}
+                    disabled={checkoutLoading || actionLoading}
+                    className="h-8 px-3 border border-white/20 text-zinc-200 font-medium text-xs rounded-lg hover:bg-white/10 transition-colors flex items-center gap-1.5"
+                    title="Generate and copy Paystack checkout link"
+                  >
+                    {checkoutLoading ? <Loader2 className="size-3 animate-spin" /> : <CreditCard className="size-3" />}
+                    Copy payment link
+                  </button>
                   <button
                     onClick={() => handleTransition("cancelled")}
                     disabled={actionLoading}
