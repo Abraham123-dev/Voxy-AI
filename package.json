@@ -18,7 +18,7 @@
     "test:s6": "node tests/agent/productTools.test.js",
     "test:s7": "node tests/agent/orderBuilder.test.js",
     "test:s11": "node tests/agent/multilingual.test.js",
-    "test:api": "node tests/api/analytics.test.js && node tests/api/orderCheckout.test.js && node tests/api/messages.test.js && node tests/api/customerDetail.test.js && node tests/utils/phone.test.js && node tests/api/webhookSignature.test.js && node tests/api/receiptSummary.test.js && node tests/api/apiErrors.test.js && node tests/utils/currency.test.js"
+    "test:api": "node tests/api/analytics.test.js && node tests/api/orderCheckout.test.js && node tests/api/messages.test.js && node tests/api/customerDetail.test.js && node tests/utils/phone.test.js && node tests/api/webhookSignature.test.js && node tests/api/receiptSummary.test.js && node tests/api/apiErrors.test.js && node tests/utils/currency.test.js && node tests/api/orderState.test.js"
   },
   "dependencies": {
     "@base-ui/react": "^1.3.0",

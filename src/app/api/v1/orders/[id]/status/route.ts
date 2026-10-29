@@ -4,21 +4,17 @@ import { prisma } from '@/lib/prisma';
 import { getAuthUser } from '@/lib/auth';
 import { successResponse, errorResponse } from '@/lib/response';
 import { logRequest } from '@/lib/logger';
-
-const ALLOWED_STATUSES = ['draft', 'confirmed', 'paid', 'cancelled'] as const;
+import {
+  ALLOWED_STATUSES,
+  VALID_TRANSITIONS,
+  canTransitionOrderStatus,
+} from '@/lib/orderStateMachine';
 
 const updateStatusSchema = z.object({
-  status: z.enum(ALLOWED_STATUSES, {
+  status: z.enum(ALLOWED_STATUSES as [string, ...string[]], {
     message: 'Invalid status. Must be one of: draft, confirmed, paid, cancelled',
   }),
 });
-
-const VALID_TRANSITIONS: Record<string, string[]> = {
-  draft: ['confirmed', 'paid', 'cancelled'],
-  confirmed: ['paid', 'cancelled'],
-  paid: [],
-  cancelled: [],
-};
 
 export async function PATCH(
   req: NextRequest,
