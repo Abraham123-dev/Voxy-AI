@@ -29,21 +29,21 @@
 
 ## INCOMPLETE
 
-### 1. Dashboard — Wrong metrics and broken link
-- StatCard for "Conversations" uses customers.length (wrong — should be conversation count).
-- No revenue figure on dashboard despite orders having totalKobo available.
-- getDashboardMetrics() is defined in src/lib/api/business.js but never called anywhere.
-- The "Test Voxy" link points to /chat/${slug} but the public route is /business/${slug} — broken for all users.
+### 1. Dashboard — Metrics & Unified Navigation [RESOLVED]
+- ✅ Revenue and average order value now loaded via server-side analytics aggregation.
+- ✅ Conversation count accurately reflects active conversation records.
+- ✅ Test Voxy and storefront links unified to `/${slug}` public storefront workspace.
+- ✅ Live analytics indicators added for paid order volume and growth.
 
 ### 2. AI Employee page — Duplicates Settings AI tab
 - /business/ai and /business/settings (AI tab) have identical form state and save logic (~400 lines duplicated).
 - /business/ai is missing the employeeName field that Settings has. They are out of sync.
 
-### 3. Inbox — Inefficient and incomplete
-- No GET /businesses/:id/conversations endpoint. Inbox works around this by fetching all customers (capped at 25) then each customer's conversations.
-- Orange warning banner about missing backend is visible to real users in production.
-- No search in conversation list.
-- No unread indicator on conversation items.
+### 3. Inbox — Conversations & Live Takeover [RESOLVED]
+- ✅ Backend endpoint `GET /api/v1/businesses/:id/conversations` implemented with pagination.
+- ✅ Orange warning banner removed from production views.
+- ✅ Quick canned reply chips added for instant merchant answers.
+- ✅ Merchant takeover messages tagged with `role: "agent"` and explicit sender name attribution.
 
 ### 4. Public storefront — Legacy V1 database query (CRITICAL)
 - src/app/business/[businessSlug]/page.jsx uses raw db.query() against V1 schema columns: logo_url, is_live, use_ai_reply, business_hours, assistant_tone, lga, street_address, social_links.
@@ -56,9 +56,10 @@
 - requestWithdrawal() calls /api/v1/business/withdrawals
 - None of these endpoints appear in API.md. Either undocumented or non-existent.
 
-### 6. Customers — No search or filter
-- No search input. Unusable with 100+ customers.
-- No order count or revenue per customer shown in the list.
+### 6. Customers — Search, Order Counts & LTV [RESOLVED]
+- ✅ Real-time customer search by name, email, or Nigerian phone number.
+- ✅ Customer lifetime value (LTV) and completed order counts computed and rendered in table.
+- ✅ Customer detail drawer loads linked order history and conversations via `/api/v1/customers/:id`.
 
 ### 7. Orders — Revenue total computed but not rendered
 - totalValueKobo is calculated on line 278 of orders/page.jsx but never rendered anywhere.
@@ -67,17 +68,14 @@
 
 ## BROKEN
 
-### 1. Public storefront reads V1 schema — CRITICAL
-src/app/business/[businessSlug]/page.jsx queries the database directly using V1 column names that do not exist in the V2 Prisma schema. Customers visiting the public Voxy link see stale or empty data.
+### 1. Public storefront reads V1 schema — CRITICAL [RESOLVED]
+Migrated to V2 Prisma schema and API layer. Public storefront renders verified business profile, operating hours, and live catalog.
 
-### 2. Dashboard "Test Voxy" link wrong route
-Hardcoded as /chat/${slug}. The public route is /business/${slug}. Broken for every user.
+### 2. Dashboard "Test Voxy" link wrong route [RESOLVED]
+Unified with valid public storefront route `/${slug}`.
 
-### 3. Dev warning banner visible in production Inbox
-```
-MISSING BACKEND: No /businesses/:id/conversations endpoint — conversations loaded by iterating customers (max 25).
-```
-This orange alert is rendered inside InboxPage with no environment check. Every user sees it.
+### 3. Dev warning banner visible in production Inbox [RESOLVED]
+Removed completely; production inbox now connects cleanly to the aggregated conversations API.
 
 ### 4. Public storefront shows marketing Navbar
 /business/[businessSlug] imports Navbar from /landing/sections/Navbar. Customers talking to a business AI see the SaaS marketing navigation bar.
