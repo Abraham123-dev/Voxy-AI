@@ -29,9 +29,10 @@ export async function POST(req: NextRequest) {
     }
 
     const { email, password } = parseResult.data;
+    const cleanEmail = email.trim().toLowerCase();
 
     const business = await prisma.business.findUnique({
-      where: { email: email.toLowerCase() },
+      where: { email: cleanEmail },
     });
 
     if (!business) {
@@ -81,13 +82,15 @@ export async function POST(req: NextRequest) {
     };
 
     const response = successResponse({ token, business: businessResponse });
-    response.cookies.set('token', token, {
+    const cookieConfig = {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      sameSite: 'lax' as const,
       path: '/',
       maxAge: 60 * 60 * 24 * 7,
-    });
+    };
+    response.cookies.set('token', token, cookieConfig);
+    response.cookies.set('voxy_auth_token', token, cookieConfig);
     return response;
   } catch (err: any) {
     logRequest({

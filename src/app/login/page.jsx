@@ -24,6 +24,7 @@ function LoginContent() {
   const [formData, setFormData] = useState({ email: initialEmail, password: "" });
   const [showPassword, setShowPassword] = useState(false);
   const [loginError, setLoginError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   const handledDemoRef = useRef(false);
 
   useEffect(() => {
@@ -35,6 +36,7 @@ function LoginContent() {
       handledDemoRef.current = true;
       const demoCreds = { email: "ifemafiaa@gmail.com", password: "Winner#1" };
       setFormData(demoCreds);
+      setSubmitting(true);
       login(demoCreds).then((data) => {
         if (data?.success) {
           router.push("/business/dashboard");
@@ -43,9 +45,12 @@ function LoginContent() {
         }
       }).catch((err) => {
         setLoginError(err.message || "Demo login failed");
+      }).finally(() => {
+        setSubmitting(false);
       });
     } else if (googleToken) {
       localStorage.setItem("token", googleToken);
+      localStorage.setItem("voxy_auth_token", googleToken);
       refreshSession().then(() => {
         router.push("/business/dashboard");
       });
@@ -63,8 +68,13 @@ function LoginContent() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoginError("");
+    setSubmitting(true);
     try {
-      const data = await login(formData);
+      const cleanData = {
+        email: formData.email.trim(),
+        password: formData.password,
+      };
+      const data = await login(cleanData);
       if (data?.success) {
         router.push("/business/dashboard");
       } else if (data?.error) {
@@ -72,6 +82,27 @@ function LoginContent() {
       }
     } catch (err) {
       setLoginError(err.message || "Invalid email or password");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDemoSignIn = async () => {
+    const demoCreds = { email: "ifemafiaa@gmail.com", password: "Winner#1" };
+    setFormData(demoCreds);
+    setLoginError("");
+    setSubmitting(true);
+    try {
+      const data = await login(demoCreds);
+      if (data?.success) {
+        router.push("/business/dashboard");
+      } else if (data?.error) {
+        setLoginError(data.error);
+      }
+    } catch (err) {
+      setLoginError(err.message || "Invalid email or password");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -214,10 +245,10 @@ function LoginContent() {
 
             <Button
               type="submit"
-              disabled={loading}
-              className="w-full h-11 rounded-xl bg-[#00D18F] text-black font-semibold text-sm hover:bg-[#00D18F]/90 transition-all hover:scale-[1.01] active:scale-[0.99] mt-2"
+              disabled={submitting}
+              className="w-full h-11 rounded-xl bg-[#00D18F] text-black font-semibold text-sm hover:bg-[#00D18F]/90 transition-all hover:scale-[1.01] active:scale-[0.99] mt-2 cursor-pointer"
             >
-              {loading ? (
+              {submitting ? (
                 <Loader2 className="w-4 h-4 animate-spin mx-auto" />
               ) : (
                 <span className="flex items-center justify-center gap-2">
@@ -235,24 +266,11 @@ function LoginContent() {
             </div>
             <button
               type="button"
-              onClick={async () => {
-                setFormData({ email: "ifemafiaa@gmail.com", password: "Winner#1" });
-                setLoginError("");
-                try {
-                  const data = await login({ email: "ifemafiaa@gmail.com", password: "Winner#1" });
-                  if (data?.success) {
-                    router.push("/business/dashboard");
-                  } else if (data?.error) {
-                    setLoginError(data.error);
-                  }
-                } catch (err) {
-                  setLoginError(err.message || "Invalid email or password");
-                }
-              }}
-              disabled={loading}
-              className="px-3.5 py-1.5 rounded-xl bg-[#00D18F]/10 hover:bg-[#00D18F] text-[#00D18F] hover:text-black text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer border border-[#00D18F]/20 hover:border-[#00D18F]"
+              onClick={handleDemoSignIn}
+              disabled={submitting}
+              className="px-3.5 py-1.5 rounded-xl bg-[#00D18F]/10 hover:bg-[#00D18F] text-[#00D18F] hover:text-black text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer border border-[#00D18F]/20 hover:border-[#00D18F] disabled:opacity-50"
             >
-              <span>Sign in</span>
+              <span>{submitting ? "Signing in…" : "Sign in"}</span>
               <ArrowRight size={13} className="group-hover:translate-x-0.5 transition-transform" />
             </button>
           </div>

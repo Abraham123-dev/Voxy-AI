@@ -12,21 +12,38 @@ const getFriendlyErrorMessage = (err, fallback = "An unexpected error occurred")
 
 export const useAuth = () => {
   const { user, setUser, clearUser, hasHydrated } = useUserStore();
-  const [loading, setLoading] = useState(!user);
+  const [loading, setLoading] = useState(false);
+  const [checkingSession, setCheckingSession] = useState(!user);
   const [error, setError] = useState(null);
+
+  // Guarantee hydration resolves even when browser storage is uninitialized
+  useEffect(() => {
+    let active = true;
+    if (!hasHydrated) {
+      const timer = setTimeout(() => {
+        if (active) useUserStore.setState({ hasHydrated: true });
+      }, 50);
+      return () => {
+        active = false;
+        clearTimeout(timer);
+      };
+    }
+  }, [hasHydrated]);
 
   // Check current session on mount once store has hydrated
   useEffect(() => {
     if (!hasHydrated) return;
 
     if (user) {
-      setLoading(false);
+      setCheckingSession(false);
       return;
     }
 
     const fetchUser = async () => {
       try {
-        const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+        const token = typeof window !== "undefined" 
+          ? (localStorage.getItem("token") || localStorage.getItem("voxy_auth_token")) 
+          : null;
         const headers = { "Content-Type": "application/json" };
         if (token) headers["Authorization"] = `Bearer ${token}`;
 
@@ -37,7 +54,6 @@ export const useAuth = () => {
 
         const contentType = res.headers.get("content-type");
         if (!contentType || !contentType.includes("application/json")) {
-          setLoading(false);
           return;
         }
 
@@ -52,7 +68,7 @@ export const useAuth = () => {
         console.warn("Session check notice:", err);
         clearUser();
       } finally {
-        setLoading(false);
+        setCheckingSession(false);
       }
     };
     fetchUser();
@@ -83,6 +99,7 @@ export const useAuth = () => {
 
       if (data.data?.token) {
         localStorage.setItem("token", data.data.token);
+        localStorage.setItem("voxy_auth_token", data.data.token);
       }
       if (data.data?.business) {
         setUser(data.data.business);
@@ -125,6 +142,7 @@ export const useAuth = () => {
 
       if (data.data?.token) {
         localStorage.setItem("token", data.data.token);
+        localStorage.setItem("voxy_auth_token", data.data.token);
       }
       if (data.data?.business) {
         setUser(data.data.business);
@@ -283,6 +301,7 @@ export const useAuth = () => {
   return {
     user,
     loading,
+    checkingSession,
     error,
     register,
     login,

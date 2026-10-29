@@ -9,7 +9,7 @@ import { useSidebar } from '@/contexts/SidebarContext';
 import { X } from 'lucide-react';
 
 export default function DashboardLayout({ children, title }) {
-  const { user, loading } = useAuth();
+  const { user, loading, checkingSession } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const { collapsed } = useSidebar();
@@ -18,10 +18,10 @@ export default function DashboardLayout({ children, title }) {
 
   // Redirect when auth resolves to no user — don't block the whole shell
   useEffect(() => {
-    if (!loading && !user && !isLighthouse) {
+    if (!checkingSession && !loading && !user && !isLighthouse) {
       router.push('/login');
     }
-  }, [loading, user, router, isLighthouse]);
+  }, [checkingSession, loading, user, router, isLighthouse]);
 
   // ── Lighthouse admin shell ────────────────────────────────────────────────
   if (isLighthouse) {

@@ -24,12 +24,13 @@ const PERKS = [
 
 export default function RegisterPage() {
   const router = useRouter();
-  const { register, loading } = useAuth();
+  const { register } = useAuth();
   const { passwordError, isPasswordValid, validatePassword } = usePasswordValidation();
 
   const [formData, setFormData] = useState({ name: "", email: "", password: "" });
   const [showPassword, setShowPassword] = useState(false);
   const [submitError, setSubmitError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   const handleInputChange = (e) => {
     const { id, value } = e.target;
@@ -42,8 +43,14 @@ export default function RegisterPage() {
     e.preventDefault();
     if (!isPasswordValid) return;
     setSubmitError("");
+    setSubmitting(true);
     try {
-      const data = await register(formData);
+      const cleanData = {
+        name: formData.name.trim(),
+        email: formData.email.trim(),
+        password: formData.password,
+      };
+      const data = await register(cleanData);
       if (data?.success) {
         router.push("/onboarding");
       } else if (data?.error) {
@@ -51,6 +58,8 @@ export default function RegisterPage() {
       }
     } catch (err) {
       setSubmitError(err.message || "Registration failed. Please try again.");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -228,10 +237,10 @@ export default function RegisterPage() {
 
             <Button
               type="submit"
-              disabled={loading}
-              className="w-full h-11 rounded-xl bg-[#00D18F] text-black font-semibold text-sm hover:bg-[#00D18F]/90 transition-all hover:scale-[1.01] active:scale-[0.99] mt-2"
+              disabled={submitting}
+              className="w-full h-11 rounded-xl bg-[#00D18F] text-black font-semibold text-sm hover:bg-[#00D18F]/90 transition-all hover:scale-[1.01] active:scale-[0.99] mt-2 cursor-pointer"
             >
-              {loading ? (
+              {submitting ? (
                 <Loader2 className="w-4 h-4 animate-spin mx-auto" />
               ) : (
                 <span className="flex items-center justify-center gap-2">
@@ -252,7 +261,7 @@ export default function RegisterPage() {
               onClick={() => {
                 router.push("/login?demo=true");
               }}
-              disabled={loading}
+              disabled={submitting}
               className="px-3.5 py-1.5 rounded-xl bg-[#00D18F]/10 hover:bg-[#00D18F] text-[#00D18F] hover:text-black text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer border border-[#00D18F]/20 hover:border-[#00D18F]"
             >
               <span>Sign in</span>
