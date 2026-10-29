@@ -6,6 +6,7 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useAuth } from "@/hooks/useAuth";
 import { getBusiness, updateBusiness } from "@/lib/api/business";
 import ImageUpload from "@/components/settings/ImageUpload";
+import { isValidNigerianPhone, normalizeNigerianPhone } from "@/lib/phone";
 import {
   Building2, Bot, User, MapPin, Clock, Truck, Languages,
   Instagram, Twitter, Globe, MessageCircle, Save, Loader2, Copy,
@@ -606,14 +607,30 @@ function SettingsContent() {
 
   const handleSave = async () => {
     if (!user?.id) return;
+
+    // Validate phone number if provided
+    const phoneInput = (data.contactPhone || "").trim();
+    if (phoneInput && !isValidNigerianPhone(phoneInput)) {
+      toast.error("Please enter a valid Nigerian mobile phone number (e.g. 0803 123 4567)");
+      return;
+    }
+    const normalizedPhone = phoneInput ? normalizeNigerianPhone(phoneInput) : "";
+
+    // Validate slug
+    const cleanSlug = (data.slug || "").trim().toLowerCase();
+    if (cleanSlug && !/^[a-z0-9-]+$/.test(cleanSlug)) {
+      toast.error("Storefront slug can only contain lowercase letters, numbers, and hyphens");
+      return;
+    }
+
     setSaving(true);
     try {
       const updated = await updateBusiness(user.id, {
         name: data.name.trim() || user.name,
-        slug: data.slug.trim() || undefined,
+        slug: cleanSlug || undefined,
         description: data.description.trim(),
         category: data.category,
-        contactPhone: data.contactPhone.trim(),
+        contactPhone: normalizedPhone,
         logoUrl: data.logoUrl.trim() || null,
         address: data.address,
         socialLinks: data.socialLinks,
