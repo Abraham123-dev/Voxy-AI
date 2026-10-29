@@ -42,6 +42,14 @@ const STATUS_TABS = [
   { id: "closed", label: "Closed" },
 ];
 
+const CANNED_REPLIES = [
+  "Hello! How can I assist you today?",
+  "Let me check stock for you right away.",
+  "Your order has been confirmed! Processing now.",
+  "Could you kindly share your delivery address?",
+  "Thank you for your patronage!",
+];
+
 function timeAgo(dateStr) {
   if (!dateStr) return "";
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -866,6 +874,26 @@ function InboxContent() {
                       <div className="pb-1.5 text-[10px] text-[#00D18F] flex items-center gap-1.5 animate-in fade-in duration-150">
                         <span className="size-1 rounded-full bg-[#00D18F] animate-ping" />
                         <span>{selected.customer?.name || "Customer"} is typing...</span>
+                      </div>
+                    )}
+                    {selected.status !== "closed" && (
+                      <div className="flex items-center gap-1.5 overflow-x-auto pb-2 scrollbar-none">
+                        {CANNED_REPLIES.map((quickText, idx) => (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => {
+                              setReply(quickText);
+                              if (textareaRef.current) {
+                                textareaRef.current.focus();
+                                textareaRef.current.style.height = "auto";
+                              }
+                            }}
+                            className="shrink-0 px-2.5 py-1 bg-white/[0.04] hover:bg-white/[0.08] active:bg-[#00D18F]/20 border border-white/[0.08] hover:border-[#00D18F]/30 text-zinc-400 hover:text-white rounded-full text-[11px] transition-colors whitespace-nowrap"
+                          >
+                            {quickText}
+                          </button>
+                        ))}
                       </div>
                     )}
                     <form onSubmit={handleSend} className="flex gap-2 items-end">
