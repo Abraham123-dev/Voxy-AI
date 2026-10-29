@@ -29,3 +29,5 @@ tmp/
 *.mp3
 *.mjs
 AGENTS.md
+
+scripts/backup_*.json
