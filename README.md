@@ -90,15 +90,15 @@ These hold regardless of which part of the app implements a given piece:
 ## 💻 Getting Started (Local Development)
 
 ### Prerequisites
-- Node.js v18+
+- Node.js v18+ (Node 20+ recommended)
 - A PostgreSQL database (Neon recommended)
-- npm
+- pnpm (or npm / yarn)
 
 ### 1. Clone and install
 ```bash
-git clone https://github.com/your-username/voxy.git
+git clone https://github.com/samkiell/voxy.git
 cd voxy
-npm install
+pnpm install
 ```
 
 ### 2. Configure environment
@@ -131,11 +131,17 @@ npx prisma migrate dev   # or apply the SQL in ./sql
 
 ### 4. Run the app
 ```bash
-npm run dev
+pnpm dev
 ```
 Visit `http://localhost:3000`.
 
-**Scripts:** `npm run dev` · `npm run build` · `npm run start` · `npm run lint`
+**Core Scripts:**
+- `pnpm dev` — Start the Next.js local development server
+- `pnpm test` — Run the 7-suite AI agent and grounding engine tests (S1–S11)
+- `pnpm run test:api` — Run the 12-suite API, security, rate-limiting, and state machine tests
+- `pnpm run test:e2e` — Execute the full 8-step end-to-end purchase and settlement simulation
+- `pnpm build` — Build production bundle
+- `pnpm lint` — Run ESLint code checks
 
 ---
 
@@ -159,6 +165,33 @@ voxy/
 
 ---
 
+## ⚠️ Known Limitations
+
+1. **Server-Side Price Authority Required:** Like all Large Language Models, the conversational agent can occasionally hallucinate pricing or unauthorized discounts. To guarantee financial integrity, pricing calculations are strictly server-authoritative (`orderStateMachine.js` & `orderBuilder.js`) — the server recalculates item totals in integer Kobo and overrides any price assertions from the model.
+2. **Third-Party API Rate Limits on Developer Tiers:** Running on hosted inference APIs (e.g. Groq free tier) introduces tokens-per-minute (TPM) limits during peak concurrency. Voxy mitigates this using multi-key rotation (`groqCooldowns`) and fallback to lightweight models (`gpt-oss-20b`).
+3. **Deep Local Slang & Pidgin Variations:** While the model accurately processes standard Nigerian Pidgin, localized slang and colloquial dialect switches can occasionally produce ambiguous intents. Voxy pairs the LLM with deterministic regex rules and negative prompt guardrails (`promptBuilder.js`) to prevent false commitments.
+4. **No Automated Delivery Routing / Dynamic Courier Pricing:** The agent only checks if an address matches the business's approved delivery zones. It does not calculate live dynamic distance-based bike courier fees. Delivery fees must be pre-configured as fixed store policies.
+5. **Human Fallback Mandatory for Edge Cases:** When encountering unsupported queries or customer frustration, Voxy halts automated commitments and initiates human takeover (`request_human_handoff`).
+
+---
+
+## 🧪 Testing & Verification Instructions
+
+To reproduce and verify the system behavior locally:
+
+```bash
+# 1. Run the AI agent grounding, tool calling, and sales behavior test suite
+pnpm test
+
+# 2. Run the backend API validation, security, and state machine test suite
+pnpm run test:api
+
+# 3. Run the end-to-end purchase simulation (cart -> draft -> confirmed -> checkout -> webhook -> paid -> receipt)
+pnpm run test:e2e
+```
+All 19 automated test suites pass without external live database dependencies by leveraging isolated test harnesses.
+
+---
 ## 🔮 What's Next
 
 - Full voice personality + multilingual polish (YarnGPT TTS layer)
@@ -181,5 +214,12 @@ Two parallel streams:
 - **[Abraham](https://github.com/abraham123-dev)** — Frontend / UX
 - **[Samkiel](https://github.com/samkiell)** — AI / Agent / Backend
 
+
+
+---
+
+## 📄 License
+
+This project is licensed under the [MIT License](LICENSE) - see the LICENSE file for details.
 
 *Built with ❤️ for African businesses.*
