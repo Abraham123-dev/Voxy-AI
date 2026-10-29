@@ -295,15 +295,39 @@ export class PaystackService {
   }
 
   /**
-   * Verifies the HMAC-SHA512 signature on incoming Paystack webhooks.
+   * Verifies the HMAC-SHA512 signature on incoming Paystack webhooks using constant-time comparison.
    */
-  static verifyWebhookSignature(signature: string | null, rawBody: string): boolean {
-    if (!signature) return false;
-    if (isMockMode() && signature === 'valid_mock_signature') {
-      return true;
+  static verifyWebhookSignature(signature: string | null, rawBody: string, customSecret?: string): boolean {
+    return verifyPaystackSignature(rawBody, signature, customSecret);
+  }
+}
+
+/**
+ * Standalone constant-time HMAC-SHA512 signature verification for Paystack webhooks.
+ */
+export function verifyPaystackSignature(
+  rawBody: string,
+  signature: string | null,
+  customSecret?: string
+): boolean {
+  if (!signature || !rawBody) return false;
+
+  const secret = customSecret || process.env.PAYSTACK_SECRET_KEY || PAYSTACK_SECRET_KEY;
+  if (isMockMode() && signature === 'valid_mock_signature') {
+    return true;
+  }
+
+  try {
+    const hash = crypto.createHmac('sha512', secret).update(rawBody).digest('hex');
+    const hashBuf = Buffer.from(hash, 'utf8');
+    const sigBuf = Buffer.from(signature, 'utf8');
+
+    if (hashBuf.length !== sigBuf.length) {
+      return false;
     }
 
-    const hash = crypto.createHmac('sha512', PAYSTACK_SECRET_KEY).update(rawBody).digest('hex');
-    return hash === signature;
+    return crypto.timingSafeEqual(hashBuf, sigBuf);
+  } catch (err) {
+    return false;
   }
 }
