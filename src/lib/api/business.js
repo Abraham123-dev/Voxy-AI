@@ -34,3 +34,7 @@ export const requestWithdrawal = (data) => api.post('/business/withdrawals', dat
 /** GET /api/v1/business/dashboard — High-level merchant metrics */
 export const getDashboardMetrics = () => api.get('/business/dashboard');
 
+/** GET /api/v1/businesses/:id/analytics — Aggregated business metrics */
+export const getBusinessAnalytics = (businessId) => api.get(`/businesses/${businessId}/analytics`);
+
+

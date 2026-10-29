@@ -40,3 +40,13 @@ export const updateOrderStatus = (orderId, status) =>
 /** DELETE /api/v1/orders/:id — cancels the order */
 export const cancelOrder = (orderId) => api.del(`/orders/${orderId}`);
 
+/**
+ * POST /api/v1/orders/:id/checkout
+ * Generates Paystack checkout authorization link for an order
+ * @param {string} orderId
+ * @param {object} [data] — { customerEmail, callbackUrl }
+ */
+export const checkoutOrder = (orderId, data = {}) =>
+  api.post(`/orders/${orderId}/checkout`, data);
+
+

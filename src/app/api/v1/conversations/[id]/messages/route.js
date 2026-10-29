@@ -7,6 +7,7 @@ const appendMessageSchema = z.object({
   role: z.string().min(1, { message: 'role is required' }),
   content: z.string().min(1, { message: 'content is required' }),
   sender: z.string().optional(),
+  senderName: z.string().optional(),
 });
 
 export async function POST(req, context) {
@@ -48,13 +49,14 @@ export async function POST(req, context) {
       return errorResponse('VALIDATION_ERROR', issue.message, 400);
     }
 
-    const isBusinessRole = parseResult.data.role === 'business';
-    const isBusinessSender = body.sender === 'business' || isBusinessRole;
+    const isAgentRole = parseResult.data.role === 'agent' || parseResult.data.role === 'business';
+    const isBusinessSender = body.sender === 'business' || body.sender === 'agent' || isAgentRole;
 
     const newMessage = {
       role: parseResult.data.role,
       content: parseResult.data.content,
       sender: isBusinessSender ? 'business' : (body.sender || (parseResult.data.role === 'user' ? 'customer' : 'assistant')),
+      senderName: parseResult.data.senderName || body.senderName || (isBusinessSender ? 'Business Owner' : undefined),
       createdAt: new Date().toISOString(),
     };
 
