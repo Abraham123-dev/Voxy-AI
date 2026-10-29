@@ -179,7 +179,7 @@ The single source of truth for scope and architecture is the **[Product Requirem
 Three parallel streams (see PRD §9):
 
 - **[Abraham](https://github.com/abraham123-dev)** — Frontend / UX
-- **[Samkiel](https://github.com/samkiell)** — AI / Agent / Customer Experience
-- **[Tobi](https://github.com/luponetn)** — Backend / Business Systems
+- **[Samkiel](https://github.com/samkiell)** — AI / Agent / Backend
+
 
 *Built with ❤️ for African businesses.*
