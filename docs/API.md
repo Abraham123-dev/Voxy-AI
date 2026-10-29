@@ -234,8 +234,8 @@ https://<YOUR-DEPLOYED-DOMAIN>/api/v1/payments/callback
       "escalationTriggers": ["speak to human", "refund", "complaint"],
       "rules": ["Never offer discounts without owner approval."]
     },
-    "createdAt": "2026-09-01T00:00:00.000Z",
-    "updatedAt": "2026-09-04T10:00:00.000Z"
+    "createdAt": "2026-10-25T10:00:00.000Z",
+    "updatedAt": "2026-10-26T12:00:00.000Z"
   },
   "error": null
 }
@@ -464,7 +464,7 @@ https://<YOUR-DEPLOYED-DOMAIN>/api/v1/payments/callback
       "id": "640bd351-cd67-4b22-925c-97e6abbb870e",
       "status": "handed_off"
     },
-    "escalatedAt": "2026-09-05T00:00:00.000Z",
+    "escalatedAt": "2026-10-27T14:30:00.000Z",
     "alertId": "alert_uuid_123",
     "emailSent": true,
     "message": "Escalation recorded successfully. Business owner notified via dashboard alerts and email."
@@ -615,7 +615,7 @@ https://<YOUR-DEPLOYED-DOMAIN>/api/v1/payments/callback
       "reference": "PAY_67a8600ae3c5ccddb9eea62e",
       "amountKobo": 9000000,
       "status": "SUCCESS",
-      "paidAt": "2026-09-04T06:00:00.000Z"
+      "paidAt": "2026-10-28T16:00:00.000Z"
     },
     "receipt": {
       "receiptNumber": "REC-20260904-09AD7690",
@@ -689,7 +689,7 @@ https://<YOUR-DEPLOYED-DOMAIN>/api/v1/payments/callback
         "amountKobo": 9000000,
         "currency": "NGN",
         "reference": "LEDGER_CREDIT_pay_uuid_123",
-        "createdAt": "2026-09-04T06:00:00.000Z"
+        "createdAt": "2026-10-28T16:00:00.000Z"
       },
       {
         "id": "ledger_uuid_2",
@@ -698,7 +698,7 @@ https://<YOUR-DEPLOYED-DOMAIN>/api/v1/payments/callback
         "amountKobo": -5000000,
         "currency": "NGN",
         "reference": "LEDGER_WITHDRAWAL_wth_uuid_123",
-        "createdAt": "2026-09-04T06:15:00.000Z"
+        "createdAt": "2026-10-28T16:15:00.000Z"
       }
     ],
     "pagination": {
@@ -778,10 +778,10 @@ https://<YOUR-DEPLOYED-DOMAIN>/api/v1/payments/callback
     "receiptNumber": "REC-20260904-09AD7690",
     "amountKobo": 9000000,
     "currency": "NGN",
-    "paymentDate": "2026-09-04T06:00:00.000Z",
+    "paymentDate": "2026-10-28T16:00:00.000Z",
     "receiptData": {
       "receiptNumber": "REC-20260904-09AD7690",
-      "issuedAt": "2026-09-04T06:00:00.000Z",
+      "issuedAt": "2026-10-28T16:00:00.000Z",
       "business": {
         "id": "b16a1d3d-b841-4cea-a183-259f111a3d27",
         "name": "Voxy Gadgets Lagos"
@@ -883,7 +883,7 @@ https://<YOUR-DEPLOYED-DOMAIN>/api/v1/payments/callback
 ```json
 {
   "status": "OK",
-  "timestamp": "2026-09-04T10:23:00.000Z"
+  "timestamp": "2026-10-29T10:23:00.000Z"
 }
 ```
 
