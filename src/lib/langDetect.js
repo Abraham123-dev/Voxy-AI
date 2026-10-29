@@ -240,18 +240,16 @@ export function detectLanguage(text) {
  * }}
  */
 export function resolveLanguage({ text = '', preferredLanguage = null, currentSessionLanguage = null, supportedLanguages = null } = {}) {
-  // 1. Resolve business supported languages (defaults to core supported Nigerian languages if unset or only default ['en'])
+  // 1. Resolve business supported languages (defaults to core supported Nigerian languages if unset)
   const defaultSupported = ['en', 'pcm', 'yo', 'ha', 'ig'];
   let allowedCodes = defaultSupported;
   if (Array.isArray(supportedLanguages) && supportedLanguages.length > 0) {
-    const custom = Array.from(new Set(supportedLanguages.map((l) => normalizeLanguageCode(l))));
-    // If the business explicitly configured specific non-default languages, respect that subset
-    if (custom.length > 1 || (custom.length === 1 && custom[0] !== 'en')) {
-      allowedCodes = custom;
-    }
+    allowedCodes = Array.from(new Set(supportedLanguages.map((l) => normalizeLanguageCode(l))));
   }
 
-  // Multilingual IS enabled for this business!
+  const isMultilingualEnabled = allowedCodes.some((c) => c !== 'en');
+
+  // Multilingual resolution
   let detectedCode = 'en';
   if (text && typeof text === 'string' && text.trim().length > 0) {
     const det = detectLanguage(text);
@@ -281,7 +279,7 @@ export function resolveLanguage({ text = '', preferredLanguage = null, currentSe
     langName: getLanguageName(finalCode),
     isSupported,
     isFallback,
-    isMultilingualEnabled: true,
+    isMultilingualEnabled,
     detectedCode,
     requestedCode,
     allowedLanguages: allowedCodes.map((c) => getLanguageName(c)),

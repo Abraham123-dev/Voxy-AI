@@ -212,24 +212,32 @@ export const paymentTool = {
       ? `${appUrl}/api/v1/payments/callback?slug=${encodeURIComponent(bizSlug)}`
       : `${appUrl}/api/v1/payments/callback`;
 
-    const paystackResult = await initializePaystackTransaction({
-      email:       customerEmail,
-      amountKobo,
-      reference,
-      callbackUrl,
-      metadata: { orderId, businessId, customerEmail },
-    });
+    let authorizationUrl = '';
+    let accessCode = null;
 
-    const checkoutUrl = paystackResult.authorizationUrl;
-    console.log(`✅ [PaymentTool] Real Paystack URL: ${checkoutUrl}`);
+    try {
+      const paystackResult = await initializePaystackTransaction({
+        email:       customerEmail,
+        amountKobo,
+        reference,
+        callbackUrl,
+        metadata: { orderId, businessId, customerEmail },
+      });
+      authorizationUrl = paystackResult.authorizationUrl;
+      accessCode = paystackResult.accessCode;
+      console.log(`✅ [PaymentTool] Real Paystack URL: ${authorizationUrl}`);
+    } catch (paystackErr) {
+      console.warn(`[PaymentTool] Paystack initialization fallback: ${paystackErr.message}`);
+      authorizationUrl = `${appUrl}/pay/${reference}?amount=${amountNaira}&email=${encodeURIComponent(customerEmail)}`;
+    }
 
     return {
       orderId,
-      reference:        paystackResult.reference,
-      authorizationUrl: checkoutUrl,
-      accessCode:       paystackResult.accessCode,
-      paymentLink:      checkoutUrl,
-      checkoutUrl:      checkoutUrl,
+      reference,
+      authorizationUrl,
+      accessCode,
+      paymentLink:      authorizationUrl,
+      checkoutUrl:      authorizationUrl,
     };
   },
 };

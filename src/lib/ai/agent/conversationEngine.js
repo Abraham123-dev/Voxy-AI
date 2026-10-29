@@ -98,35 +98,37 @@ export class ConversationEngine {
     }
 
     // Delivery location & address extraction
-    const explicitAddressMatch = text.match(/(?:(?:deliver|send|ship)(?:\s+it)?\s+(?:to|address)|(?:delivery\s+)?address\s*(?:is)?)\s*:?\s*([^,.\n!]+(?:,\s*[^,.\n!]+)*)/i);
-    if (explicitAddressMatch && explicitAddressMatch[1].trim().length > 2) {
-      context.deliveryLocation = explicitAddressMatch[1].trim();
-    } else {
-      const nigerianAreas = [
-        'Lekki', 'Ikeja', 'Victoria Island', 'Ikoyi', 'Yaba', 'Surulere', 'Maitama',
-        'Garki', 'Wuse', 'Asokoro', 'Magodo', 'Ajah', 'Maryland', 'Gbagada', 'Festac',
-        'Oshodi', 'Agege', 'Ikorodu', 'Alaba', 'Enugu', 'Port Harcourt', 'Ibadan', 'Benin City',
-        'GRA', 'Ilupeju', 'Opebi', 'Allen', 'Marina', 'Apapa', 'Anthony'
-      ];
-      let foundArea = null;
-      for (const area of nigerianAreas) {
-        if (new RegExp(`\\b${area}\\b`, 'i').test(text)) {
-          foundArea = area;
-          break;
-        }
+    const nigerianAreas = [
+      'Lekki', 'Ikeja', 'Victoria Island', 'Ikoyi', 'Yaba', 'Surulere', 'Maitama',
+      'Garki', 'Wuse', 'Asokoro', 'Magodo', 'Ajah', 'Maryland', 'Gbagada', 'Festac',
+      'Oshodi', 'Agege', 'Ikorodu', 'Alaba', 'Enugu', 'Port Harcourt', 'Ibadan', 'Benin City',
+      'GRA', 'Ilupeju', 'Opebi', 'Allen', 'Marina', 'Apapa', 'Anthony'
+    ];
+    let foundArea = null;
+    for (const area of nigerianAreas) {
+      if (new RegExp(`\\b${area}\\b`, 'i').test(text)) {
+        foundArea = area;
+        break;
       }
+    }
 
-      // Check for full street / house address (e.g., "23 Akintola GRA" or "15 Adeola Odeku St")
-      const streetOrNumberMatch = text.match(/\b(?:\d+[\w\s,]+(?:street|st|road|rd|close|cl|crescent|cres|avenue|ave|way|estate|gra|phase|flat|block|house)|(?:\d+[\s,]+[A-Za-z0-9\s,]+))\b/i);
-
-      if (streetOrNumberMatch && streetOrNumberMatch[0].trim().length > 3) {
-        context.deliveryLocation = streetOrNumberMatch[0].trim();
-      } else if (foundArea) {
-        context.deliveryLocation = foundArea;
+    if (foundArea) {
+      context.deliveryLocation = foundArea;
+    } else {
+      const explicitAddressMatch = text.match(/(?:(?:deliver|send|ship)(?:\s+it)?\s+(?:to|address)|(?:delivery\s+)?address\s*(?:is)?)\s*:?\s*([^,.\n!?]+(?:,\s*[^,.\n!?]+)*)/i);
+      if (explicitAddressMatch && explicitAddressMatch[1].trim().length > 2) {
+        context.deliveryLocation = explicitAddressMatch[1].trim();
       } else {
-        const locationMatch = text.match(/\b(?:in|to|at|deliver to)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\b/);
-        if (locationMatch && !['Nigeria', 'Lagos', 'Abuja', 'Monday', 'Friday', 'Tomorrow', 'Today'].includes(locationMatch[1])) {
-          context.deliveryLocation = locationMatch[1];
+        // Check for full street / house address (must include an address keyword to avoid false-matching product names like "13 Pro")
+        const streetOrNumberMatch = text.match(/\b\d+[\w\s,]+(?:street|st|road|rd|close|cl|crescent|cres|avenue|ave|way|estate|gra|phase|flat|block|house)\b/i);
+
+        if (streetOrNumberMatch && streetOrNumberMatch[0].trim().length > 3) {
+          context.deliveryLocation = streetOrNumberMatch[0].trim();
+        } else {
+          const locationMatch = text.match(/\b(?:in|to|at|deliver to)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\b/);
+          if (locationMatch && !['Nigeria', 'Lagos', 'Abuja', 'Monday', 'Friday', 'Tomorrow', 'Today'].includes(locationMatch[1])) {
+            context.deliveryLocation = locationMatch[1];
+          }
         }
       }
     }
@@ -247,7 +249,6 @@ export class ConversationEngine {
         this.updateSessionPreferences(h.content, session);
       }
     }
-    this.updateSessionPreferences(message, session);
 
     // 3. Classify Customer Intent
     const classification = IntentClassifier.classify(message, session);
